@@ -15,7 +15,7 @@ public class ActiveDirectory {
     String[][] authenticate = new String[3][1];
     //authenticate[0][0] = "Success";
     //authenticate[1][0] = *my username*;
-    //authenticate[2][0] = *my memberOf properties*
+    //authenticate[2][0] = *my memberOf properties separated by ';' *
     
     public ActiveDirectory(String username, String password){
     String[][] auth = new String[3][1];  
@@ -24,11 +24,11 @@ public class ActiveDirectory {
             Hashtable env = new Hashtable();
             env.put(Context.INITIAL_CONTEXT_FACTORY, 
                 "com.sun.jndi.ldap.LdapCtxFactory");
-            env.put(Context.PROVIDER_URL, "ldap://sonichealth.com.au:389");
+            env.put(Context.PROVIDER_URL, "ldap://<yourServerAddress>:<portNumber>");
 
             // Authenticate 
             env.put(Context.SECURITY_AUTHENTICATION, "simple");
-            env.put(Context.SECURITY_PRINCIPAL, "sonichealth\\"+username);
+            env.put(Context.SECURITY_PRINCIPAL, "<yourDomain>\\"+username);
             env.put(Context.SECURITY_CREDENTIALS, password);
             auth[0][0] = "Success";
                 
@@ -39,7 +39,7 @@ public class ActiveDirectory {
             // locate this user's record
                 SearchControls controls = new SearchControls();
                 controls.setSearchScope(SUBTREE_SCOPE);
-                NamingEnumeration<SearchResult> renum = context.search("DC=sonichealth,DC=com,DC=au", "sAMAccountName="+username, controls);
+                NamingEnumeration<SearchResult> renum = context.search("DC=<DomainName>,DC=com,DC=au", "sAMAccountName="+username, controls);
             
                 if (!renum.hasMore()) {
                     System.out.println("Cannot locate user information for "+username);
@@ -63,9 +63,7 @@ public class ActiveDirectory {
             //iterate among ADGroups (member of field)
                 String ADGroup = "";
                 for(int i = 0; i<groups.size(); i++){
-                    //if(groups.get(i).toLowerCase().contains("dl dhm issues")){
-                        ADGroup = ADGroup + groups.get(i) + ";";
-                    //}
+                    ADGroup = ADGroup + groups.get(i) + ";";
                 }
                 if(ADGroup.length()>0){
                     ADGroup = ADGroup.substring(0,ADGroup.length()-1);
@@ -76,7 +74,7 @@ public class ActiveDirectory {
                 
         }
         catch(Exception e){
-            auth[0][0] = "Failed to Authenticated";
+            auth[0][0] = "Failed to Authenticate";
             //System.out.println("Not Authenticated");
         }
         this.authenticate = auth;
