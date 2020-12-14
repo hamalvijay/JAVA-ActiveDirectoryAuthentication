@@ -1,0 +1,86 @@
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.List;
+import javax.naming.Context;
+import javax.naming.NamingEnumeration;
+import javax.naming.directory.Attribute;
+import javax.naming.directory.Attributes;
+import javax.naming.directory.DirContext;
+import javax.naming.directory.InitialDirContext;
+import javax.naming.directory.SearchControls;
+import static javax.naming.directory.SearchControls.SUBTREE_SCOPE;
+import javax.naming.directory.SearchResult;
+
+public class ActiveDirectory {
+    String[][] authenticate = new String[3][1];
+    //authenticate[0][0] = "Success";
+    //authenticate[1][0] = *my username*;
+    //authenticate[2][0] = *my memberOf properties*
+    
+    public ActiveDirectory(String username, String password){
+    String[][] auth = new String[3][1];  
+        try{
+            // Set up the environment for creating the initial context
+            Hashtable env = new Hashtable();
+            env.put(Context.INITIAL_CONTEXT_FACTORY, 
+                "com.sun.jndi.ldap.LdapCtxFactory");
+            env.put(Context.PROVIDER_URL, "ldap://sonichealth.com.au:389");
+
+            // Authenticate 
+            env.put(Context.SECURITY_AUTHENTICATION, "simple");
+            env.put(Context.SECURITY_PRINCIPAL, "sonichealth\\"+username);
+            env.put(Context.SECURITY_CREDENTIALS, password);
+            auth[0][0] = "Success";
+                
+            // Create the initial context
+            DirContext context = new InitialDirContext(env);
+            
+            
+            // locate this user's record
+                SearchControls controls = new SearchControls();
+                controls.setSearchScope(SUBTREE_SCOPE);
+                NamingEnumeration<SearchResult> renum = context.search("DC=sonichealth,DC=com,DC=au", "sAMAccountName="+username, controls);
+            
+                if (!renum.hasMore()) {
+                    System.out.println("Cannot locate user information for "+username);
+                    System.exit(1);
+                }
+                SearchResult result = renum.next();
+
+                List<String> groups = new ArrayList<>();
+                Attribute memberOf = result.getAttributes().get("memberOf");
+                
+                if (memberOf != null) {// null if this user belongs to no group at all
+                    for (int i = 0; i < memberOf.size(); i++) {                        
+                        Attributes atts = context.getAttributes(memberOf.get(i).toString(), new String[] { "CN" });
+                        Attribute att = atts.get("CN");
+                        groups.add(att.get().toString());
+                    }
+                }
+                
+                context.close();
+                
+            //iterate among ADGroups (member of field)
+                String ADGroup = "";
+                for(int i = 0; i<groups.size(); i++){
+                    //if(groups.get(i).toLowerCase().contains("dl dhm issues")){
+                        ADGroup = ADGroup + groups.get(i) + ";";
+                    //}
+                }
+                if(ADGroup.length()>0){
+                    ADGroup = ADGroup.substring(0,ADGroup.length()-1);
+                }
+                auth[1][0] = username;
+                auth [2][0] = ADGroup;
+                
+                
+        }
+        catch(Exception e){
+            auth[0][0] = "Failed to Authenticated";
+            //System.out.println("Not Authenticated");
+        }
+        this.authenticate = auth;
+     
+     
+    }
+}
